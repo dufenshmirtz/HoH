@@ -1,7 +1,11 @@
+using System.Collections;
+using System.Diagnostics;
 using System.Xml.Linq;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
+using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 
 public class Player2Controller : MonoBehaviour
@@ -26,6 +30,24 @@ public class Player2Controller : MonoBehaviour
     public TextMeshProUGUI p2Name,p1Name;
     public GameObject playAgainButton;
     public GameObject mainMenuButton;
+    bool FullGerosActive = false;
+    float OGMoveSpeed;
+    int grounds = 0;
+    private bool onCooldown = false;
+    public Slider cooldownSlider;
+    float cdTimer = 0f;
+    public Image cdbarimage;
+    public Sprite activeSprite, ogSprite;
+    private float dashingPower = 40f;
+    private float dashingTime = 0.1f;
+    bool dashin = false;
+    public PlayerAnimationController enemy;  
+    bool dashhit = false;
+    bool counterOn = false;
+    bool countered = false;
+
+
+
 
     void Start()
     {
@@ -35,9 +57,14 @@ public class Player2Controller : MonoBehaviour
         healthbar.SetMaxHealth(maxHealth);
         p2Name.text = PlayerPrefs.GetString("Player2Choice");
 
+        OGMoveSpeed = moveSpeed;
+
         p1Name.gameObject.SetActive(false);
         playAgainButton.SetActive(false);
         mainMenuButton.SetActive(false);
+        OGMoveSpeed = moveSpeed;
+
+        cooldownSlider.maxValue = 1f;
     }
 
     void Update()
@@ -47,6 +74,11 @@ public class Player2Controller : MonoBehaviour
         // Running animations...
         if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.RightArrow))
         {
+            if ((dashin))
+            {
+                return;
+            }
+
             if (isGrounded)
             {
                 animator.SetBool("IsRunning", true);
@@ -106,9 +138,63 @@ public class Player2Controller : MonoBehaviour
 
         }
 
+        //Koubi Nikis
+        if (p2Name.text == "Angel" && Input.GetKeyDown(KeyCode.V) && !onCooldown)
+        {
+            StartCoroutine(AngelStateCoroutine(6f));
+        }
+
+        //Full Geros
+        if (p2Name.text == "Larry" && Input.GetKeyDown(KeyCode.V) && !onCooldown)
+        {
+            FullGerosActive = true;
+            moveSpeed += 2f;
+
+            cdbarimage.sprite = activeSprite;
+
+            animator.SetTrigger("FullGeros");
+            Invulnerable();
+
+            StartCoroutine(FullGerosDeactivateAfterDelay(10));
+
+            UpdateCooldownSlider(60);
+        }
+
+        //Dufen-Dash
+        if (p2Name.text == "Fotis" && Input.GetKeyDown(KeyCode.V) && !onCooldown)
+        {
+            cdbarimage.sprite = activeSprite;
+            StartCoroutine(DashAnimation());
+            UpdateCooldownSlider(2); // Start cooldown for T key
+        }
 
 
+        //counter
+        if (p2Name.text == "Kolovos" && Input.GetKeyDown(KeyCode.V) && !onCooldown)
+        {
 
+            audiomngr.PlaySFX(audiomngr.counterScream, audiomngr.counterVol);
+            animator.SetTrigger("counter");
+            counterOn = true;
+
+
+            // Start the cooldown timer
+            cdTimer = 20f;
+            onCooldown = true;
+
+            StartCoroutine(AbilityCooldown(20f));
+
+        }
+
+        //Beast Mode
+
+        if (countered)
+        {
+            audiomngr.PlaySFX(audiomngr.counterClong, audiomngr.counterClongVol);
+            DealCounterDmg();
+            countered = false;
+            UpdateCooldownSlider(2);
+        }
 
         // Animation control for jumping, falling, and landing
         animator.SetBool("IsGrounded", isGrounded);
@@ -121,6 +207,7 @@ public class Player2Controller : MonoBehaviour
         {
             isGrounded = true;
             animator.SetBool("Jump", false);
+            grounds++;
         }
 
         if (other.CompareTag("Platform"))
@@ -133,13 +220,32 @@ public class Player2Controller : MonoBehaviour
             colliders[3].enabled = true;
         }
 
+        if (dashin && other.CompareTag("Player") && !dashhit)
+        {
+            DealDashDmg();
+            dashhit = true;
+            return;
+        }
+
+        if (other.CompareTag("Player"))
+        {
+            isGrounded = true;
+            animator.SetBool("Jump", false);
+            grounds++;
+        }
+
     }
 
     void OnTriggerExit2D(Collider2D other)
     {
         if (other.CompareTag("Ground"))
         {
-            isGrounded = false;
+            grounds--;
+            if (grounds == 0)
+            {
+                isGrounded = false;
+            }
+            
         }
 
         if (other.CompareTag("Platform"))
@@ -156,11 +262,47 @@ public class Player2Controller : MonoBehaviour
             }
 
         }
+
+        if (dashin)
+        {
+
+            return;
+        }
+
+        if (other.CompareTag("Player"))
+        {
+            grounds--;
+            if (grounds == 0)
+            {
+                isGrounded = false;
+            }
+        }
+
     }
 
     private void OnDrawGizmosSelected()
     {
         Gizmos.DrawWireSphere(attackPoint.position, attackRange);
+    }
+
+    public void DealDashDmg()
+    {
+
+        
+        enemy.TakeDamage(15);
+        audiomngr.PlaySFX(audiomngr.dashHit, audiomngr.heavyAttackVolume);
+
+
+    }
+
+    public void DealCounterDmg()
+    {
+
+
+        enemy.TakeDamage(20);
+        
+
+
     }
 
     public void DealDmg()
@@ -169,7 +311,7 @@ public class Player2Controller : MonoBehaviour
 
         if (hitEnemy != null)
         {
-            Debug.Log("-40 biatch");
+            
             hitEnemy.GetComponent<PlayerAnimationController>().TakeDamage(heavyDMG);
             audiomngr.PlaySFX(audiomngr.heavyattack, audiomngr.heavyAttackVolume);
         }
@@ -185,7 +327,7 @@ public class Player2Controller : MonoBehaviour
 
         if (hitEnemy != null)
         {
-            Debug.Log("-5 biatch");
+            UnityEngine.Debug.Log("-5 biatch");
             hitEnemy.GetComponent<PlayerAnimationController>().TakeDamage(lightDMG);
             audiomngr.PlaySFX(audiomngr.lightattack, audiomngr.lightAttackVolume);
         }
@@ -199,12 +341,23 @@ public class Player2Controller : MonoBehaviour
     public void TakeDamage(int dmg)
     {
 
+        if (FullGerosActive)
+        {
+            return;
+        }
+
+        if (counterOn)
+        {
+            countered = true;
+            return;
+        }
+
         if (isBlocking)
         {
             if (dmg == heavyDMG) //if its heavy attack take half the damage
             {
                 currHealth -= dmg / 2;
-                Debug.Log("P1 took less dmg!");
+                UnityEngine.Debug.Log("P1 took less dmg!");
                 healthbar.SetHealth(currHealth);
             }
             //if its light attack take no dmg
@@ -216,7 +369,7 @@ public class Player2Controller : MonoBehaviour
 
             animator.SetTrigger("tookDmg");
 
-            Debug.Log("P2 took all dmg!");
+            UnityEngine.Debug.Log("P2 took all dmg!");
             healthbar.SetHealth(currHealth);
         }
 
@@ -253,7 +406,7 @@ public class Player2Controller : MonoBehaviour
         mainMenuButton.SetActive(true);
 
 
-        Debug.Log("nigga 2 ded");
+        UnityEngine.Debug.Log("nigga 2 ded");
     }
 
     void PermaDeath()
@@ -275,6 +428,214 @@ public class Player2Controller : MonoBehaviour
     private void Awake()
     {
         audiomngr = GameObject.FindGameObjectWithTag("Audio").GetComponent<AudioManager>();
+    }
+
+    IEnumerator AngelStateCoroutine(float duration)
+    {
+        // Disable colliders and set the Rigidbody to Static
+        Collider2D[] colliders = GetComponents<Collider2D>();
+        foreach (Collider2D collider in colliders)
+        {
+            collider.enabled = false;
+        }
+
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+        if (rb != null)
+        {
+            rb.bodyType = RigidbodyType2D.Static;
+        }
+
+        // Set the player as dead
+        animator.SetBool("isDead", true);
+
+
+        // Loop for the specified duration
+        //float elapsedTime = 0f;
+        for (int i = 0; i < duration; i++)
+        {
+
+            UnityEngine.Debug.Log("here");
+            // Regenerate health
+            currHealth += 5;
+            healthbar.SetHealth(currHealth);
+
+            
+            yield return new WaitForSeconds(1f);
+        }
+
+        
+
+        animator.SetBool("isDead", false);
+
+        animator.SetBool("permanentDeath", false);
+
+        this.enabled = true;
+
+        animator.SetTrigger("Angel");
+
+        // Enable colliders and restore the Rigidbody
+        //Rejuvenation();
+        
+    }
+
+    void Invulnerable()
+    {
+        Collider2D[] colliders = GetComponents<Collider2D>();
+
+        foreach (Collider2D collider in colliders)
+        {
+            collider.enabled = false;
+        }
+
+        if (rb != null)
+        {
+            rb.bodyType = RigidbodyType2D.Static;
+        }
+    }
+
+    private void Rejuvenation()
+    {
+
+        Collider2D[] colliders = GetComponents<Collider2D>();
+
+        foreach (Collider2D collider in colliders)
+        {
+            if(collider != colliders[3])
+            {
+                collider.enabled = true;
+            }
+        }
+
+        colliders[4].enabled = false;
+        if (rb != null)
+        {
+            rb.bodyType = RigidbodyType2D.Dynamic;
+        }
+
+        if (p2Name.text == "Larry")
+        {
+            animator.SetTrigger("animationOver");
+
+
+        }
+
+        if (p2Name.text == "Angel")
+        {
+            // Start the cooldown timer
+            onCooldown = true;
+            cdTimer = 45f;
+            
+            StartCoroutine(AbilityCooldown(45f));
+        }
+    }
+
+
+    IEnumerator FullGerosDeactivateAfterDelay(float delay)
+    {
+
+
+        yield return new WaitForSeconds(delay);
+        FullGerosActive = false;
+        moveSpeed = OGMoveSpeed;
+        onCooldown = true;
+        // Start the cooldown timer
+        cdTimer = 45f;
+        
+        StartCoroutine(AbilityCooldown(45f));
+    }
+
+    IEnumerator AbilityCooldown(float duration)
+    {
+        cdbarimage.sprite = ogSprite;  //change the bar appearance to normal
+        while (cdTimer > 0)
+        {
+            yield return new WaitForSeconds(1f);
+            cdTimer -= 1f;
+            UpdateCooldownSlider(duration); // Update the cooldown slider every second
+        }
+
+        // Reset the cooldown flag
+        
+        onCooldown = false;
+        cdTimer = 0f;
+    }
+
+    void UpdateCooldownSlider(float duration)
+    {
+        float progress = Mathf.Clamp01(1f - cdTimer / duration);
+        cooldownSlider.value = progress;
+    }
+
+    IEnumerator DashAnimation()
+    {
+        dashin = true;
+        // Store the original gravity scale
+        float ogGravityScale = rb.gravityScale;
+
+        // Disable gravity while dashing
+        rb.gravityScale = 0f;
+
+        // Store the current velocity
+        Vector2 currentVelocity = rb.velocity;
+
+        // Determine the dash direction based on the input
+        float moveDirection = Input.GetKey(KeyCode.LeftArrow) ? -1f : 1f; ;
+
+        Collider2D[] colliders = GetComponents<Collider2D>();
+        foreach (Collider2D collider in colliders)
+        {
+            collider.enabled = false;
+        }
+        colliders[3].enabled = true;
+        colliders[4].enabled = true;
+
+
+        audiomngr.PlaySFX(audiomngr.dash, 1);
+        // Calculate the dash velocity
+        Vector2 dashVelocity = new Vector2(moveDirection * dashingPower, currentVelocity.y);
+
+        // Apply the dash velocity
+        rb.velocity = dashVelocity;
+
+        // Trigger the dash animation
+        animator.SetTrigger("Dash");
+
+
+
+        // Wait for the dash duration
+        yield return new WaitForSeconds(dashingTime);
+
+        // Reset the velocity after the dash
+        rb.velocity = currentVelocity;
+
+        // Reset the gravity scale
+        rb.gravityScale = ogGravityScale;
+
+        dashin = false;
+
+        foreach (Collider2D collider in colliders)
+        {
+            if (collider != colliders[3])
+            {
+                collider.enabled = true;
+            }
+        }
+        colliders[3].enabled = false;
+        colliders[4].enabled = false;
+
+        dashhit = false;
+
+        // Start the cooldown timer
+        cdTimer = 5f;
+        onCooldown = true;
+
+        StartCoroutine(AbilityCooldown(5f));
+
+    }
+
+    public void CounterOff()
+    {
+        counterOn = false;
     }
 
 }

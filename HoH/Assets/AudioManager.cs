@@ -20,6 +20,10 @@ public class AudioManager : MonoBehaviour
     public AudioClip swoosh;
     public AudioClip heavyswoosh;
     public AudioClip run;
+    public AudioClip dash;
+    public AudioClip dashHit;
+    public AudioClip counterScream;
+    public AudioClip counterClong;
 
     //volumes
     public float deathVolume = 1.0f;
@@ -30,7 +34,9 @@ public class AudioManager : MonoBehaviour
     public float swooshVolume = 1.0f;
     public float heavySwooshVolume = 1.0f;
     public float runVolume = 1.0f;
-    
+    public float counterVol = 1.0f;
+    public float counterClongVol = 20.0f;
+
 
     //settings
     private static string musicPref = "MusicPref";
