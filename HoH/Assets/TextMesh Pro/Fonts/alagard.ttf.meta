@@ -1,21 +1,3 @@
-fileFormatVersion: 2
-guid: 4bc5fc16b924c514a8d17e29b0284c8e
-TrueTypeFontImporter:
-  externalObjects: {}
-  serializedVersion: 4
-  fontSize: 16
-  forceTextureCase: -2
-  characterSpacing: 0
-  characterPadding: 1
-  includeFontData: 1
-  fontNames:
-  - Alagard
-  fallbackFontReferences: []
-  customCharacters: 
-  fontRenderingMode: 0
-  ascentCalculationMode: 1
-  useLegacyBoundsCalculation: 0
-  shouldRoundAdvanceValue: 1
-  userData: 
-  assetBundleName: 
-  assetBundleVariant: 
+version https://git-lfs.github.com/spec/v1
+oid sha256:cc1ad1fbb4b9f9c200dc30b801ce328d7cc7ab604e4983fb1b69ab62ef48be95
+size 472
